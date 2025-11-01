@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import emailjs from '@emailjs/browser';
-import Flutterwave from './Flutterwave';
 import './Support.css';
 
 const Support = () => {
@@ -137,7 +136,7 @@ const Support = () => {
             </div>
 
             {!showEnquiryForm ? (
-              <form className="donation-form" onSubmit={() => <Flutterwave />} ref={form}>
+              <form className="donation-form" onSubmit={handleSubmit} ref={form}>
                 <div className="form-group">
                   <label htmlFor="name">Full Name *</label>
                   <input
