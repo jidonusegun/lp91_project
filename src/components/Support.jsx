@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import emailjs from '@emailjs/browser';
+import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
 import './Support.css';
 
 const Support = () => {
@@ -18,6 +19,7 @@ const Support = () => {
     message: '',
     severity: 'success',
   });
+  const [paymentConfig, setPaymentConfig] = useState(null);
 
   const [showEnquiryForm, setShowEnquiryForm] = useState(false);
 
@@ -29,24 +31,184 @@ const Support = () => {
     }));
   };
 
-  const handleSubmit = async(e) => {
+
+  // Flutterwave config - create fresh config when payment is initiated
+  const getFlutterwaveConfig = () => {
+    // Generate fresh tx_ref for each payment
+    const txRef = `donation-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    
+    return {
+      public_key: import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY || '',
+      tx_ref: txRef,
+      amount: parseFloat(formData.amount) || 0,
+      currency: 'NGN',
+      payment_options: 'card,mobilemoney,ussd,banktransfer',
+      customer: {
+        email: formData.email || '',
+        phone_number: formData.phone || '08000000000',
+        name: formData.anonymous ? 'Anonymous Donor' : (formData.name || ''),
+      },
+      customizations: {
+        title: 'Church Building Support - Donation',
+        description: formData.message || 'Donation for church building project',
+        logo: '../assets/logo.png',
+      },
+      meta: {
+        donor_name: formData.anonymous ? 'Anonymous' : formData.name,
+        anonymous: formData.anonymous.toString(),
+        message: formData.message || '',
+      },
+    };
+  };
+
+  // Flutterwave config for hook - updates when paymentConfig state changes
+  const flutterwaveConfig = useMemo(() => {
+    if (paymentConfig) {
+      return paymentConfig;
+    }
+    // Return a default config when no payment is initiated
+    return {
+      public_key: '',
+      tx_ref: '',
+      amount: 0,
+      currency: 'NGN',
+      payment_options: 'card,mobilemoney,ussd,banktransfer',
+      customer: {
+        email: '',
+        phone_number: '',
+        name: '',
+      },
+      customizations: {
+        title: 'Church Building Support - Donation',
+        description: 'Donation for church building project',
+        logo: window.location.origin + '/logo.png',
+      },
+    };
+  }, [paymentConfig]);
+
+  // Initialize Flutterwave payment handler
+  const handleFlutterPayment = useFlutterwave(flutterwaveConfig);
+
+  // Effect to trigger payment when paymentConfig is set
+  useEffect(() => {
+    if (paymentConfig && paymentConfig.amount > 0 && paymentConfig.tx_ref) {
+      // Small delay to ensure the hook has the updated config
+      const timer = setTimeout(() => {
+        handleFlutterPayment({
+          callback: (response) => {
+            setLoading(false);
+            setPaymentConfig(null); // Reset config
+            if (response.status === 'successful') {
+              setSnackbar({
+                open: true,
+                message: 'Payment successful! Thank you for your donation.',
+                severity: 'success',
+              });
+              setTimeout(() => setSnackbar(prev => ({ ...prev, open: false })), 5000);
+              
+              // Send confirmation email via EmailJS (optional)
+              sendDonationConfirmationEmail(response);
+              
+              // Reset form
+              setFormData({ 
+                name: '', 
+                email: '', 
+                phone: '', 
+                amount: '', 
+                message: '', 
+                anonymous: false 
+              });
+              
+              closePaymentModal();
+            } else {
+              setSnackbar({
+                open: true,
+                message: 'Payment was not completed. Please try again.',
+                severity: 'error',
+              });
+              setTimeout(() => setSnackbar(prev => ({ ...prev, open: false })), 5000);
+            }
+          },
+          onClose: () => {
+            setLoading(false);
+            setPaymentConfig(null); // Reset config
+          },
+        });
+      }, 150);
+
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentConfig]);
+
+  // Handle donation form submission (Flutterwave)
+  const handleDonationSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate form
+    if (!formData.name || !formData.email || !formData.amount || parseFloat(formData.amount) <= 0) {
+      setSnackbar({
+        open: true,
+        message: 'Please fill in all required fields and enter a valid amount.',
+        severity: 'error',
+      });
+      setTimeout(() => setSnackbar(prev => ({ ...prev, open: false })), 5000);
+      return;
+    }
+
+    setLoading(true);
+    
+    // Create and set payment config - this will trigger the useEffect
+    const config = getFlutterwaveConfig();
+    setPaymentConfig(config);
+  };
+
+  // Send donation confirmation email (optional)
+  const sendDonationConfirmationEmail = async (paymentResponse) => {
+    try {
+      // Create a temporary form data for EmailJS
+      const templateParams = {
+        from_name: formData.anonymous ? 'Anonymous Donor' : formData.name,
+        from_email: formData.email,
+        phone: formData.phone || 'Not provided',
+        amount: formData.amount,
+        message: formData.message || 'No message',
+        transaction_ref: paymentResponse.tx_ref,
+        payment_status: paymentResponse.status,
+      };
+
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID || '',
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID || '',
+        templateParams,
+        import.meta.env.VITE_EMAILJS_USER_ID || ''
+      );
+    } catch (error) {
+      console.error('Failed to send confirmation email:', error);
+      // Don't show error to user as payment was successful
+    }
+  };
+
+  // Handle enquiry form submission (EmailJS)
+  const handleEnquirySubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Handle form submission here
+    
     try {
       const result = await emailjs.sendForm(
-        process.env.REACT_APP_EMAILJS_SERVICE_ID || '',
-        process.env.REACT_APP_EMAILJS_TEMPLATE_ID || '',
+        import.meta.env.VITE_EMAILJS_SERVICE_ID || '',
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID || '',
         form.current,
-        process.env.REACT_APP_EMAILJS_USER_ID || ''
+        import.meta.env.VITE_EMAILJS_USER_ID || ''
       );
 
       if (result.text === 'OK') {
         setSnackbar({
           open: true,
-          message: 'Message sent successfully!',
+          message: 'Enquiry sent successfully! We will get back to you soon.',
           severity: 'success',
         });
+        setTimeout(() => setSnackbar(prev => ({ ...prev, open: false })), 5000);
         setFormData({ name: '', email: '', phone: '', amount: '', message: '', anonymous: false });
       } else {
         throw new Error('Failed to send message');
@@ -54,13 +216,13 @@ const Support = () => {
     } catch (error) {
       setSnackbar({
         open: true,
-        message: 'Failed to send message. Please try again later.',
+        message: 'Failed to send enquiry. Please try again later.',
         severity: 'error',
       });
+      setTimeout(() => setSnackbar(prev => ({ ...prev, open: false })), 5000);
     } finally {
       setLoading(false);
     }
-    
   };
 
   const supportAmounts = [5000, 10000, 50000, 100000, 200000, 250000];
@@ -136,7 +298,7 @@ const Support = () => {
             </div>
 
             {!showEnquiryForm ? (
-              <form className="donation-form" onSubmit={handleSubmit} ref={form}>
+              <form className="donation-form" onSubmit={handleDonationSubmit} ref={form}>
                 <div className="form-group">
                   <label htmlFor="name">Full Name *</label>
                   <input
@@ -219,7 +381,7 @@ const Support = () => {
                 </button>
               </form>
             ) : (
-              <form className="enquiry-form" onSubmit={handleSubmit} ref={form}>
+              <form className="enquiry-form" onSubmit={handleEnquirySubmit} ref={form}>
                 <div className="form-group">
                   <label htmlFor="enquiry-name">Full Name *</label>
                   <input
@@ -309,6 +471,42 @@ const Support = () => {
           </blockquote>
         </div>
       </div>
+
+      {/* Snackbar Notification */}
+      {snackbar.open && (
+        <div 
+          className={`snackbar snackbar-${snackbar.severity}`}
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            padding: '1rem 1.5rem',
+            borderRadius: '8px',
+            color: 'white',
+            backgroundColor: snackbar.severity === 'success' ? '#4caf50' : '#f44336',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            zIndex: 10000,
+            minWidth: '300px',
+            animation: 'slideIn 0.3s ease-out',
+          }}
+        >
+          {snackbar.message}
+          <button
+            onClick={() => setSnackbar(prev => ({ ...prev, open: false }))}
+            style={{
+              marginLeft: '1rem',
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '1.2rem',
+              float: 'right',
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </section>
   );
 };

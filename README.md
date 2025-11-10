@@ -1,16 +1,100 @@
-# React + Vite
+# Church Building Support - React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is a React application for church building support with Flutterwave payment integration.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 💝 Donation form with Flutterwave payment integration
+- 📧 Enquiry form with EmailJS integration
+- 📱 Responsive design
+- 🎨 Modern UI with smooth animations
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Install Dependencies
 
-## Expanding the ESLint configuration
+```bash
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 2. Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```env
+# Flutterwave Configuration
+REACT_APP_FLUTTERWAVE_PUBLIC_KEY=your_flutterwave_public_key_here
+
+# EmailJS Configuration (for enquiry form and donation confirmations)
+REACT_APP_EMAILJS_SERVICE_ID=your_emailjs_service_id
+REACT_APP_EMAILJS_TEMPLATE_ID=your_emailjs_template_id
+REACT_APP_EMAILJS_USER_ID=your_emailjs_user_id
+REACT_APP_EMAILJS_DONATION_TEMPLATE_ID=your_donation_template_id (optional)
+```
+
+### 3. Get Flutterwave Public Key
+
+1. Sign up for a Flutterwave account at [https://flutterwave.com](https://flutterwave.com)
+2. Go to your dashboard and navigate to Settings > API Keys
+3. Copy your **Public Key** (starts with `FLWPUBK-`)
+4. For testing, use the test public key from the Flutterwave dashboard
+5. For production, use your live public key
+
+### 4. Run the Development Server
+
+```bash
+npm run dev
+```
+
+## Payment Integration
+
+The donation form uses Flutterwave React v3 for payment processing. When a user submits the donation form:
+
+1. Form validation is performed
+2. Flutterwave payment modal opens
+3. User completes payment
+4. On successful payment:
+   - Success message is displayed
+   - Confirmation email is sent (optional, via EmailJS)
+   - Form is reset
+
+## Payment Methods Supported
+
+- 💳 Card payments
+- 📱 Mobile money
+- 🏦 Bank transfer
+- 📞 USSD
+
+## Project Structure
+
+```
+church-building-support/
+├── src/
+│   ├── components/
+│   │   └── Support.jsx      # Main support/donation component with Flutterwave integration
+│   ├── App.jsx
+│   └── main.jsx
+├── .env                      # Environment variables (create this file)
+└── package.json
+```
+
+## Technologies Used
+
+- React 19
+- Vite
+- Flutterwave React v3
+- EmailJS
+- CSS3
+
+## Development
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+
+## Notes
+
+- Make sure to use test keys during development
+- Switch to live keys only in production
+- The Flutterwave public key is safe to expose in client-side code
+- Never expose your Flutterwave secret key in client-side code
