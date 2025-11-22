@@ -11,7 +11,9 @@ const Support = () => {
     phone: '',
     amount: '',
     message: '',
-    anonymous: false
+    title: '',
+    anonymous: false,
+    prayerRequest: ''
   });
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -22,6 +24,7 @@ const Support = () => {
   const [paymentConfig, setPaymentConfig] = useState(null);
 
   const [showEnquiryForm, setShowEnquiryForm] = useState(false);
+  const [showPrayerRequest, setShowPrayerRequest] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -109,6 +112,11 @@ const Support = () => {
               // Send confirmation email via EmailJS (optional)
               sendDonationConfirmationEmail(response);
               
+              // Send prayer request email if prayer request exists
+              if (formData.prayerRequest && formData.prayerRequest.trim() !== '') {
+                sendPrayerRequestEmail();
+              }
+              
               // Reset form
               setFormData({ 
                 name: '', 
@@ -116,8 +124,11 @@ const Support = () => {
                 phone: '', 
                 amount: '', 
                 message: '', 
-                anonymous: false 
+                title: '',
+                anonymous: false,
+                prayerRequest: ''
               });
+              setShowPrayerRequest(false);
               
               closePaymentModal();
             } else {
@@ -189,6 +200,29 @@ const Support = () => {
     }
   };
 
+  // Send prayer request email via EmailJS
+  const sendPrayerRequestEmail = async () => {
+    try {
+      const templateParams = {
+        name: formData.anonymous ? 'Anonymous Donor' : formData.name,
+        email: formData.email,
+        phone: formData.phone || 'Not provided',
+        title: formData.title || 'Prayer Request',
+        message: formData.message || formData.prayerRequest,
+      };
+
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID || '',
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID || '',
+        templateParams,
+        import.meta.env.VITE_EMAILJS_USER_ID || ''
+      );
+    } catch (error) {
+      console.error('Failed to send prayer request email:', error);
+      // Don't show error to user as payment was successful
+    }
+  };
+
   // Handle enquiry form submission (EmailJS)
   const handleEnquirySubmit = async (e) => {
     e.preventDefault();
@@ -209,7 +243,8 @@ const Support = () => {
           severity: 'success',
         });
         setTimeout(() => setSnackbar(prev => ({ ...prev, open: false })), 5000);
-        setFormData({ name: '', email: '', phone: '', amount: '', message: '', anonymous: false });
+        setFormData({ name: '', email: '', phone: '', amount: '', message: '', title: '', anonymous: false, prayerRequest: '' });
+        setShowPrayerRequest(false);
       } else {
         throw new Error('Failed to send message');
       }
@@ -363,6 +398,35 @@ const Support = () => {
                   />
                 </div>
 
+                <div className="form-group">
+                  <span 
+                    onClick={() => setShowPrayerRequest(!showPrayerRequest)}
+                    style={{
+                      cursor: 'pointer',
+                      color: '#007bff',
+                      textDecoration: 'underline',
+                      fontSize: '0.9rem',
+                      display: 'block',
+                      marginBottom: showPrayerRequest ? '0.5rem' : '0'
+                    }}
+                  >
+                    {showPrayerRequest ? 'Hide prayer request' : '+ Add a prayer request (Optional)'}
+                  </span>
+                  {showPrayerRequest && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <label htmlFor="prayerRequest">Prayer Request</label>
+                      <textarea
+                        id="prayerRequest"
+                        name="prayerRequest"
+                        value={formData.prayerRequest}
+                        onChange={handleInputChange}
+                        placeholder="Share your prayer request..."
+                        rows="4"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <div className="form-group checkbox-group">
                   <label className="checkbox-label">
                     <input
@@ -418,6 +482,19 @@ const Support = () => {
                     onChange={handleInputChange}
                     required
                     placeholder="Enter your phone number"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="enquiry-name">Title *</label>
+                  <input
+                    type="text"
+                    id="enquiry-name"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="Enter your title"
                   />
                 </div>
 

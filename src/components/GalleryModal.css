@@ -41,16 +41,36 @@
 }
 
 .close-btn {
-	position: absolute;
-	top: 16px;
-	right: 16px;
-	background: rgba(0, 0, 0, 0.5);
-	border: 1px solid rgba(255,255,255,0.2);
-	color: white;
-	border-radius: 8px;
-	padding: 8px 12px;
+	position: fixed;
+	top: 80px;
+	right: 20px;
+	background: rgba(255, 255, 255, 0.95);
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	color: #222;
+	border-radius: 50%;
+	width: 48px;
+	height: 48px;
+	padding: 0;
 	cursor: pointer;
-	font-size: 14px;
+	font-size: 24px;
+	font-weight: bold;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2001;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	transition: all 0.3s ease;
+	line-height: 1;
+}
+
+.close-btn:hover {
+	background: rgba(255, 255, 255, 1);
+	transform: scale(1.1);
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.close-btn:active {
+	transform: scale(0.95);
 }
 
 .nav-btn {
@@ -93,4 +113,12 @@
 
 @media (max-width: 768px) {
 	.nav-btn { width: 40px; height: 40px; font-size: 24px; }
+	
+	.close-btn {
+		top: 70px;
+		right: 16px;
+		width: 44px;
+		height: 44px;
+		font-size: 22px;
+	}
 }
